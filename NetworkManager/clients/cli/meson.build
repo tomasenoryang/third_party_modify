@@ -30,8 +30,47 @@ if enable_polkit_agent
   deps += polkit_agent_dep
 endif
 
-executable(
+# Build shared library
+libnmcli = shared_library(
   name,
+  sources,
+  dependencies: deps,
+  c_args: clients_c_flags + ['-DG_LOG_DOMAIN="@0@"'.format(name), '-g'],
+  version: '1.0.0',
+  soversion: '1',
+  install: true,
+  install_dir: join_paths(nm_libdir, 'libnmcli'),
+)
+
+# Create dependency object for the library
+libnmcli_dep = declare_dependency(
+  link_with: libnmcli,
+  include_directories: include_directories('.'),
+  dependencies: deps,
+)
+
+# Install header files
+install_headers(
+  'libnmcli.h',
+  subdir: 'libnmcli',
+)
+
+# Create pkg-config file
+pkg = import('pkgconfig')
+pkg.generate(
+  libnmcli,
+  name: 'libnmcli',
+  description: 'NetworkManager CLI library',
+  version: '1.0.0',
+  requires: ['libnm', 'glib-2.0'],
+  requires_private: ['readline'],
+  subdirs: 'libnmcli',
+  filebase: 'libnmcli',
+)
+
+# Also build executable for backward compatibility
+executable(
+  name + '-bin',
   sources,
   dependencies: deps,
   c_args: clients_c_flags + ['-DG_LOG_DOMAIN="@0@"'.format(name)],
@@ -39,3 +78,13 @@ executable(
   link_depends: linker_script_binary,
   install: true,
 )
+
+# Build example program
+# if enable_tests
+#   executable(
+#     name + '-example',
+#     'nmcli-example.c',
+#     dependencies: [libnmcli_dep],
+#     install: false,
+#   )
+# endif

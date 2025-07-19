@@ -14,6 +14,7 @@
 #include <termios.h>
 #include <unistd.h>
 #include <locale.h>
+#include <stdbool.h>
 #include <glib-unix.h>
 #include <readline/readline.h>
 #include <readline/history.h>
@@ -987,4 +988,145 @@ main (int argc, char *argv[])
 	nmc_cleanup (&nm_cli);
 
 	return nm_cli.return_value;
+}
+
+/* === Dynamic Library API Implementation === */
+
+int
+nmcli_execute(int argc, char **argv)
+{
+		/* Set locale to use environment variables */
+		setlocale (LC_ALL, "");
+
+		#ifdef GETTEXT_PACKAGE
+			/* Set i18n stuff */
+			bindtextdomain (GETTEXT_PACKAGE, NMLOCALEDIR);
+			bind_textdomain_codeset (GETTEXT_PACKAGE, "UTF-8");
+			textdomain (GETTEXT_PACKAGE);
+		#endif
+		
+			/* Save terminal settings */
+			tcgetattr (STDIN_FILENO, &termios_orig);
+		
+			nm_cli.return_text = g_string_new (_("Success"));
+			loop = g_main_loop_new (NULL, FALSE);
+		
+			g_unix_signal_add (SIGTERM, signal_handler, GINT_TO_POINTER (SIGTERM));
+			g_unix_signal_add (SIGINT, signal_handler, GINT_TO_POINTER (SIGINT));
+		
+			if (process_command_line (&nm_cli, argc, argv))
+				g_main_loop_run (loop);
+		
+			if (nm_cli.complete) {
+				/* Remove error statuses from command completion runs. */
+				if (nm_cli.return_value < NMC_RESULT_COMPLETE_FILE)
+					nm_cli.return_value = NMC_RESULT_SUCCESS;
+			} else if (nm_cli.return_value != NMC_RESULT_SUCCESS) {
+				/* Print result descripting text */
+				g_printerr ("%s\n", nm_cli.return_text->str);
+			}
+		
+			g_main_loop_unref (loop);
+			nmc_cleanup (&nm_cli);
+		
+			return nm_cli.return_value;
+}
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <time.h>
+#include <fcntl.h>
+#include <string.h>
+#include <glib.h>
+
+int
+nmcli_execute_with_output(int argc, char **argv, char **output, char **error)
+{
+    char stdout_filename[256];
+    char stderr_filename[256];
+    int stdout_fd = -1, stderr_fd = -1;
+    int saved_stdout = -1, saved_stderr = -1;
+    FILE *stdout_file = NULL, *stderr_file = NULL;
+    char *stdout_buffer = NULL, *stderr_buffer = NULL;
+    int result;
+
+    snprintf(stdout_filename, sizeof(stdout_filename), "/tmp/nmcli_stdout_%ld_%d", 
+             (long)time(NULL), getpid());
+    snprintf(stderr_filename, sizeof(stderr_filename), "/tmp/nmcli_stderr_%ld_%d", 
+             (long)time(NULL), getpid());
+
+    stdout_fd = open(stdout_filename, O_CREAT | O_RDWR | O_TRUNC, 0600);
+    stderr_fd = open(stderr_filename, O_CREAT | O_RDWR | O_TRUNC, 0600);
+
+    if (stdout_fd == -1 || stderr_fd == -1) {
+        if (stdout_fd != -1) close(stdout_fd);
+        if (stderr_fd != -1) close(stderr_fd);
+        unlink(stdout_filename);
+        unlink(stderr_filename);
+        return -1;  // 你可以替换成 NMC_RESULT_ERROR_UNKNOWN
+    }
+
+    // 保存 stdout/stderr 原始 fd
+    saved_stdout = dup(STDOUT_FILENO);
+    saved_stderr = dup(STDERR_FILENO);
+
+    // 重定向 stdout/stderr
+    dup2(stdout_fd, STDOUT_FILENO);
+    dup2(stderr_fd, STDERR_FILENO);
+
+    // 这里实际执行命令
+    result = nmcli_execute(argc, argv);
+
+    // 还原 stdout/stderr
+    fflush(stdout);
+    fflush(stderr);
+    dup2(saved_stdout, STDOUT_FILENO);
+    dup2(saved_stderr, STDERR_FILENO);
+    close(saved_stdout);
+    close(saved_stderr);
+    close(stdout_fd);
+    close(stderr_fd);
+
+    // 读取输出内容
+    stdout_file = fopen(stdout_filename, "r");
+    stderr_file = fopen(stderr_filename, "r");
+
+    if (stdout_file) {
+        fseek(stdout_file, 0, SEEK_END);
+        long size = ftell(stdout_file);
+        fseek(stdout_file, 0, SEEK_SET);
+        stdout_buffer = g_malloc(size + 1);
+        fread(stdout_buffer, 1, size, stdout_file);
+        stdout_buffer[size] = '\0';
+        fclose(stdout_file);
+    }
+
+    if (stderr_file) {
+        fseek(stderr_file, 0, SEEK_END);
+        long size = ftell(stderr_file);
+        fseek(stderr_file, 0, SEEK_SET);
+        stderr_buffer = g_malloc(size + 1);
+        fread(stderr_buffer, 1, size, stderr_file);
+        stderr_buffer[size] = '\0';
+        fclose(stderr_file);
+    }
+
+    unlink(stdout_filename);
+    unlink(stderr_filename);
+
+    if (output) *output = stdout_buffer ? stdout_buffer : g_strdup("");
+    else g_free(stdout_buffer);
+
+    if (error) *error = stderr_buffer ? stderr_buffer : g_strdup("");
+    else g_free(stderr_buffer);
+
+    return result;
+}
+
+
+const char*
+nmcli_get_version(void)
+{
+	return NMCLI_VERSION;
 }

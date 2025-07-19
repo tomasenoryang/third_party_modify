@@ -5,9 +5,10 @@
 
 #ifndef NMC_NMCLI_H
 #define NMC_NMCLI_H
-
+#include <stdbool.h>
 #include "nm-secret-agent-simple.h"
 #include "nm-meta-setting-desc.h"
+
 
 struct _NMPolkitListener;
 
@@ -157,5 +158,66 @@ void nmc_empty_output_fields (NmcOutputData *output_data);
 	nm_auto (nmc_empty_output_fields) NmcOutputData out = { \
 		.output_data = g_ptr_array_new_full (20, g_free), \
 	}
+
+/* === Dynamic Library API === */
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/**
+ * nmcli_lib_init:
+ * 
+ * Initialize the nmcli library. This function must be called before
+ * using any other nmcli library functions.
+ * 
+ * Returns: TRUE on success, FALSE on failure
+ */
+__attribute__((visibility("default"))) gboolean nmcli_lib_init(void);
+
+/**
+ * nmcli_lib_cleanup:
+ * 
+ * Clean up the nmcli library. This function should be called when
+ * the library is no longer needed.
+ */
+__attribute__((visibility("default"))) void nmcli_lib_cleanup(void);
+
+/**
+ * nmcli_execute:
+ * @argc: Number of arguments
+ * @argv: Array of argument strings
+ * 
+ * Execute nmcli command with the given arguments.
+ * 
+ * Returns: Exit code (NMCResultCode)
+ */
+__attribute__((visibility("default"))) int nmcli_execute(int argc, char **argv);
+
+/**
+ * nmcli_execute_with_output:
+ * @argc: Number of arguments
+ * @argv: Array of argument strings
+ * @output: Pointer to store output string (must be freed by caller)
+ * @error: Pointer to store error message (must be freed by caller)
+ * 
+ * Execute nmcli command with the given arguments and capture output.
+ * 
+ * Returns: Exit code (NMCResultCode)
+ */
+__attribute__((visibility("default"))) int nmcli_execute_with_output(int argc, char **argv, char **output, char **error);
+
+/**
+ * nmcli_get_version:
+ * 
+ * Get the version string of the nmcli library.
+ * 
+ * Returns: Version string (do not free)
+ */
+__attribute__((visibility("default"))) const char* nmcli_get_version(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* NMC_NMCLI_H */
