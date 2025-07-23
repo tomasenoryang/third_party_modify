@@ -59,6 +59,9 @@ typedef enum {
     /* Connection/Device/AP not found */
     NMC_RESULT_ERROR_NOT_FOUND = 10,
 
+    /* Buffer size too small for output */
+    NMC_RESULT_ERROR_BUFFER_TOO_SMALL = 11,
+
     /* --complete-args signals a file name may follow */
     NMC_RESULT_COMPLETE_FILE = 65,
 } NMCResultCode;
@@ -89,7 +92,7 @@ __attribute__((visibility("default"))) int nmcli_execute(int argc, char **argv);
  * 
  * Returns: Exit code (NMCResultCode)
  */
-__attribute__((visibility("default"))) int nmcli_execute_with_output(int argc, char **argv, char **output, char **error);
+__attribute__((visibility("default"))) int nmcli_execute_with_output(int argc, char **argv, char *output, size_t *size, char **error);
 
 /**
  * nmcli_get_version:

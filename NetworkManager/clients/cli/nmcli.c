@@ -1031,25 +1031,17 @@ nmcli_execute(int argc, char **argv)
 		
 			return nm_cli.return_value;
 }
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <time.h>
-#include <fcntl.h>
-#include <string.h>
-#include <glib.h>
-
 int
-nmcli_execute_with_output(int argc, char **argv, char **output, char **error)
+nmcli_execute_with_output(int argc, char **argv, char *output, size_t *size, char **error)
 {
     char stdout_filename[256];
     char stderr_filename[256];
     int stdout_fd = -1, stderr_fd = -1;
     int saved_stdout = -1, saved_stderr = -1;
     FILE *stdout_file = NULL, *stderr_file = NULL;
-    char *stdout_buffer = NULL, *stderr_buffer = NULL;
+    char *stderr_buffer = NULL;
     int result;
+    size_t actual_output_size = 0;
 
     snprintf(stdout_filename, sizeof(stdout_filename), "/tmp/nmcli_stdout_%ld_%d", 
              (long)time(NULL), getpid());
@@ -1064,21 +1056,17 @@ nmcli_execute_with_output(int argc, char **argv, char **output, char **error)
         if (stderr_fd != -1) close(stderr_fd);
         unlink(stdout_filename);
         unlink(stderr_filename);
-        return -1;  // 你可以替换成 NMC_RESULT_ERROR_UNKNOWN
+        return NMC_RESULT_ERROR_UNKNOWN;
     }
 
-    // 保存 stdout/stderr 原始 fd
     saved_stdout = dup(STDOUT_FILENO);
     saved_stderr = dup(STDERR_FILENO);
 
-    // 重定向 stdout/stderr
     dup2(stdout_fd, STDOUT_FILENO);
     dup2(stderr_fd, STDERR_FILENO);
 
-    // 这里实际执行命令
     result = nmcli_execute(argc, argv);
 
-    // 还原 stdout/stderr
     fflush(stdout);
     fflush(stderr);
     dup2(saved_stdout, STDOUT_FILENO);
@@ -1088,38 +1076,54 @@ nmcli_execute_with_output(int argc, char **argv, char **output, char **error)
     close(stdout_fd);
     close(stderr_fd);
 
-    // 读取输出内容
     stdout_file = fopen(stdout_filename, "r");
     stderr_file = fopen(stderr_filename, "r");
 
     if (stdout_file) {
         fseek(stdout_file, 0, SEEK_END);
-        long size = ftell(stdout_file);
+        long file_size = ftell(stdout_file);
         fseek(stdout_file, 0, SEEK_SET);
-        stdout_buffer = g_malloc(size + 1);
-        fread(stdout_buffer, 1, size, stdout_file);
-        stdout_buffer[size] = '\0';
+
+        actual_output_size = (size_t)file_size;
+        if (output && *size >= actual_output_size + 1) {
+            fread(output, 1, actual_output_size, stdout_file);
+            output[actual_output_size] = '\0';
+        } else {
+            if (size)
+                *size = actual_output_size + 1;
+            fclose(stdout_file);
+            fclose(stderr_file);
+            unlink(stdout_filename);
+            unlink(stderr_filename);
+            return NMC_RESULT_ERROR_BUFFER_TOO_SMALL;
+        }
         fclose(stdout_file);
+    } else {
+        actual_output_size = 0;
+        if (output && *size > 0)
+            output[0] = '\0';
     }
+
+    if (size)
+        *size = actual_output_size + 1;
 
     if (stderr_file) {
         fseek(stderr_file, 0, SEEK_END);
-        long size = ftell(stderr_file);
+        long file_size = ftell(stderr_file);
         fseek(stderr_file, 0, SEEK_SET);
-        stderr_buffer = g_malloc(size + 1);
-        fread(stderr_buffer, 1, size, stderr_file);
-        stderr_buffer[size] = '\0';
+        stderr_buffer = g_malloc(file_size + 1);
+        fread(stderr_buffer, 1, file_size, stderr_file);
+        stderr_buffer[file_size] = '\0';
         fclose(stderr_file);
     }
 
     unlink(stdout_filename);
     unlink(stderr_filename);
 
-    if (output) *output = stdout_buffer ? stdout_buffer : g_strdup("");
-    else g_free(stdout_buffer);
-
-    if (error) *error = stderr_buffer ? stderr_buffer : g_strdup("");
-    else g_free(stderr_buffer);
+    if (error)
+        *error = stderr_buffer ? stderr_buffer : g_strdup("");
+    else
+        g_free(stderr_buffer);
 
     return result;
 }

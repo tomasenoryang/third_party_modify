@@ -166,6 +166,8 @@ gcc -o myapp myapp.c $(pkg-config --cflags --libs libnmcli)
 gcc -o myapp myapp.c -I/usr/local/include/libnmcli -L/usr/local/lib/libnmcli -lnmcli
 
 gcc -o nmcli-example ../clients/cli/nmcli-example.c -I../clients/cli $(pkg-config --cflags glib-2.0 gobject-2.0 libnm) -L./clients/cli -lnmcli $(pkg-config --libs glib-2.0 gobject-2.0 libnm)
+
+export LD_LIBRARY_PATH=./clients/cli:$LD_LIBRARY_PATH && ./nmcli-example
 ```
 
 ## 错误代码

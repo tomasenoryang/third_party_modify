@@ -49,6 +49,9 @@ typedef enum {
 	/* Connection/Device/AP not found */
 	NMC_RESULT_ERROR_NOT_FOUND = 10,
 
+	/* Buffer size too small for output */
+	NMC_RESULT_ERROR_BUFFER_TOO_SMALL = 11,
+
 	/* --complete-args signals a file name may follow */
 	NMC_RESULT_COMPLETE_FILE = 65,
 } NMCResultCode;
@@ -165,23 +168,7 @@ void nmc_empty_output_fields (NmcOutputData *output_data);
 extern "C" {
 #endif
 
-/**
- * nmcli_lib_init:
- * 
- * Initialize the nmcli library. This function must be called before
- * using any other nmcli library functions.
- * 
- * Returns: TRUE on success, FALSE on failure
- */
-__attribute__((visibility("default"))) gboolean nmcli_lib_init(void);
 
-/**
- * nmcli_lib_cleanup:
- * 
- * Clean up the nmcli library. This function should be called when
- * the library is no longer needed.
- */
-__attribute__((visibility("default"))) void nmcli_lib_cleanup(void);
 
 /**
  * nmcli_execute:
@@ -205,7 +192,7 @@ __attribute__((visibility("default"))) int nmcli_execute(int argc, char **argv);
  * 
  * Returns: Exit code (NMCResultCode)
  */
-__attribute__((visibility("default"))) int nmcli_execute_with_output(int argc, char **argv, char **output, char **error);
+__attribute__((visibility("default"))) int nmcli_execute_with_output(int argc, char **argv, char *output, size_t *size, char **error);
 
 /**
  * nmcli_get_version:
