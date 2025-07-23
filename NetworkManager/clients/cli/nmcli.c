@@ -1042,6 +1042,7 @@ nmcli_execute_with_output(int argc, char **argv, char *output, size_t *size, cha
     char *stderr_buffer = NULL;
     int result;
     size_t actual_output_size = 0;
+    long file_size = 0;
 
     snprintf(stdout_filename, sizeof(stdout_filename), "/tmp/nmcli_stdout_%ld_%d", 
              (long)time(NULL), getpid());
@@ -1081,7 +1082,7 @@ nmcli_execute_with_output(int argc, char **argv, char *output, size_t *size, cha
 
     if (stdout_file) {
         fseek(stdout_file, 0, SEEK_END);
-        long file_size = ftell(stdout_file);
+        file_size = ftell(stdout_file);
         fseek(stdout_file, 0, SEEK_SET);
 
         actual_output_size = (size_t)file_size;
@@ -1109,7 +1110,8 @@ nmcli_execute_with_output(int argc, char **argv, char *output, size_t *size, cha
 
     if (stderr_file) {
         fseek(stderr_file, 0, SEEK_END);
-        long file_size = ftell(stderr_file);
+        file_size = 0;
+        file_size = ftell(stderr_file);
         fseek(stderr_file, 0, SEEK_SET);
         stderr_buffer = g_malloc(file_size + 1);
         fread(stderr_buffer, 1, file_size, stderr_file);
