@@ -7,6 +7,7 @@
 #include "nm-default.h"
 
 #include "nmcli.h"
+#include "libnmcli.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -1032,7 +1033,7 @@ nmcli_execute(int argc, char **argv)
 			return nm_cli.return_value;
 }
 int
-nmcli_execute_with_output(int argc, char **argv, char *output, size_t *size, char **error)
+nmcli_execute_with_output(int argc, char **argv, char *output, size_t *size, char *error, size_t *error_size)
 {
     char stdout_filename[256];
     char stderr_filename[256];
@@ -1122,9 +1123,31 @@ nmcli_execute_with_output(int argc, char **argv, char *output, size_t *size, cha
     unlink(stdout_filename);
     unlink(stderr_filename);
 
-    if (error)
-        *error = stderr_buffer ? stderr_buffer : g_strdup("");
-    else
+    if (error && *error_size > 0) {
+        if (stderr_buffer) {
+            size_t required_error_size = file_size + 1;
+            if (*error_size >= required_error_size) {
+                memcpy(error, stderr_buffer, file_size);
+                error[file_size] = '\0';
+            } else {
+                /* Error buffer too small */
+                *error_size = required_error_size;
+                if (stderr_buffer)
+                    g_free(stderr_buffer);
+                return NMC_RESULT_ERROR_BUFFER_TOO_SMALL_ERROR;
+            }
+        } else {
+            error[0] = '\0';
+        }
+    } else if (stderr_buffer && file_size > 0) {
+        /* Error buffer not provided but stderr has content */
+        *error_size = file_size + 1;
+        if (stderr_buffer)
+            g_free(stderr_buffer);
+        return NMC_RESULT_ERROR_BUFFER_TOO_SMALL_ERROR;
+    }
+    
+    if (stderr_buffer)
         g_free(stderr_buffer);
 
     return result;

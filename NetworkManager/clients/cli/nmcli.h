@@ -52,6 +52,9 @@ typedef enum {
 	/* Buffer size too small for output */
 	NMC_RESULT_ERROR_BUFFER_TOO_SMALL = 11,
 
+	/* Buffer size too small for error output */
+	NMC_RESULT_ERROR_BUFFER_TOO_SMALL_ERROR = 12,
+
 	/* --complete-args signals a file name may follow */
 	NMC_RESULT_COMPLETE_FILE = 65,
 } NMCResultCode;
@@ -162,49 +165,6 @@ void nmc_empty_output_fields (NmcOutputData *output_data);
 		.output_data = g_ptr_array_new_full (20, g_free), \
 	}
 
-/* === Dynamic Library API === */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-
-
-/**
- * nmcli_execute:
- * @argc: Number of arguments
- * @argv: Array of argument strings
- * 
- * Execute nmcli command with the given arguments.
- * 
- * Returns: Exit code (NMCResultCode)
- */
-__attribute__((visibility("default"))) int nmcli_execute(int argc, char **argv);
-
-/**
- * nmcli_execute_with_output:
- * @argc: Number of arguments
- * @argv: Array of argument strings
- * @output: Pointer to store output string (must be freed by caller)
- * @error: Pointer to store error message (must be freed by caller)
- * 
- * Execute nmcli command with the given arguments and capture output.
- * 
- * Returns: Exit code (NMCResultCode)
- */
-__attribute__((visibility("default"))) int nmcli_execute_with_output(int argc, char **argv, char *output, size_t *size, char **error);
-
-/**
- * nmcli_get_version:
- * 
- * Get the version string of the nmcli library.
- * 
- * Returns: Version string (do not free)
- */
-__attribute__((visibility("default"))) const char* nmcli_get_version(void);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif /* NMC_NMCLI_H */

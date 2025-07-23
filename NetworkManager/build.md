@@ -50,6 +50,10 @@ find build -type f -name nmcli
 meson setup build --reconfigure
 
 
-ninja -C ../build && gcc -o nmcli-example ../clients/cli/nmcli-example.c -I../clients/cli $(pkg-config --cflags glib-2.0 gobject-2.0 libnm) -L./clients/cli -lnmcli $(pkg-config --libs glib-2.0 gobject-2.0 libnm) && export LD_LIBRARY_PATH=./clients/cli:$LD_LIBRARY_PATH && ./nmcli-example
+ninja -C build
 
-错误：无法创建 NMClient 对象：发送数据出错：断开的管道。
+# 编译示例程序（不依赖glib）
+gcc -o nmcli-example ./clients/cli/nmcli-example.c -I./clients/cli -L./build/clients/cli -lnmcli
+
+# 运行示例程序
+export LD_LIBRARY_PATH=./build/clients/cli:$LD_LIBRARY_PATH && ./nmcli-example

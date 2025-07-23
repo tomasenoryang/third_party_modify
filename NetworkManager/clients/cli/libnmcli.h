@@ -9,11 +9,16 @@
 #ifndef LIBNMCLI_H
 #define LIBNMCLI_H
 
+
 /* Define basic types if not using glib */
 #ifndef __GLIB_H__
 typedef int gboolean;
+#ifndef TRUE
 #define TRUE 1
+#endif
+#ifndef FALSE
 #define FALSE 0
+#endif
 #endif
 
 #ifdef __cplusplus
@@ -62,6 +67,9 @@ typedef enum {
     /* Buffer size too small for output */
     NMC_RESULT_ERROR_BUFFER_TOO_SMALL = 11,
 
+    /* Buffer size too small for error output */
+    NMC_RESULT_ERROR_BUFFER_TOO_SMALL_ERROR = 12,
+
     /* --complete-args signals a file name may follow */
     NMC_RESULT_COMPLETE_FILE = 65,
 } NMCResultCode;
@@ -85,14 +93,16 @@ __attribute__((visibility("default"))) int nmcli_execute(int argc, char **argv);
  * nmcli_execute_with_output:
  * @argc: Number of arguments
  * @argv: Array of argument strings
- * @output: Pointer to store output string (must be freed by caller)
- * @error: Pointer to store error message (must be freed by caller)
+ * @output: Pointer to store output string (caller allocated)
+ * @size: Pointer to size of output buffer, updated with actual size needed
+ * @error: Pointer to store error message (caller allocated)
+ * @error_size: Pointer to size of error buffer, updated with required size if buffer too small
  * 
  * Execute nmcli command with the given arguments and capture output.
  * 
  * Returns: Exit code (NMCResultCode)
  */
-__attribute__((visibility("default"))) int nmcli_execute_with_output(int argc, char **argv, char *output, size_t *size, char **error);
+__attribute__((visibility("default"))) int nmcli_execute_with_output(int argc, char **argv, char *output, size_t *size, char *error, size_t *error_size);
 
 /**
  * nmcli_get_version:
