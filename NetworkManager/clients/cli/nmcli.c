@@ -951,6 +951,7 @@ nmc_cleanup (NmCli *nmc)
 	nmc_polkit_agent_fini (nmc);
 }
 
+#ifndef BUILDING_LIBRARY
 int
 main (int argc, char *argv[])
 {
@@ -990,12 +991,20 @@ main (int argc, char *argv[])
 
 	return nm_cli.return_value;
 }
+#endif
 
 /* === Dynamic Library API Implementation === */
 
 int
 nmcli_execute(int argc, char **argv)
 {
+		/* Reset global state before each call */
+		nmc_cleanup (&nm_cli);
+		if (loop) {
+			g_main_loop_unref (loop);
+			loop = NULL;
+		}
+		
 		/* Set locale to use environment variables */
 		setlocale (LC_ALL, "");
 
@@ -1009,7 +1018,23 @@ nmcli_execute(int argc, char **argv)
 			/* Save terminal settings */
 			tcgetattr (STDIN_FILENO, &termios_orig);
 		
+			/* Reinitialize nm_cli structure */
 			nm_cli.return_text = g_string_new (_("Success"));
+			nm_cli.return_value = NMC_RESULT_SUCCESS;
+			nm_cli.timeout = -1;
+			nm_cli.should_wait = 0;
+			nm_cli.nowait_flag = TRUE;
+			nm_cli.nmc_config_mutable.print_output = NMC_PRINT_NORMAL;
+			nm_cli.nmc_config_mutable.multiline_output = FALSE;
+			nm_cli.mode_specified = FALSE;
+			nm_cli.nmc_config_mutable.escape_values = TRUE;
+			nm_cli.ask = FALSE;
+			nm_cli.complete = FALSE;
+			nm_cli.nmc_config_mutable.show_secrets = FALSE;
+			nm_cli.nmc_config_mutable.in_editor = FALSE;
+			nm_cli.editor_status_line = FALSE;
+			nm_cli.editor_save_confirmation = TRUE;
+			
 			loop = g_main_loop_new (NULL, FALSE);
 		
 			g_unix_signal_add (SIGTERM, signal_handler, GINT_TO_POINTER (SIGTERM));
@@ -1028,6 +1053,7 @@ nmcli_execute(int argc, char **argv)
 			}
 		
 			g_main_loop_unref (loop);
+			loop = NULL;
 			nmc_cleanup (&nm_cli);
 		
 			return nm_cli.return_value;
@@ -1044,6 +1070,13 @@ nmcli_execute_with_output(int argc, char **argv, char *output, size_t *size, cha
     int result;
     size_t actual_output_size = 0;
     long file_size = 0;
+
+    /* Reset global state before each call to ensure clean state */
+    nmc_cleanup (&nm_cli);
+    if (loop) {
+        g_main_loop_unref (loop);
+        loop = NULL;
+    }
 
     snprintf(stdout_filename, sizeof(stdout_filename), "/tmp/nmcli_stdout_%ld_%d", 
              (long)time(NULL), getpid());

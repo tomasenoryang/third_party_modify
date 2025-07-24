@@ -35,16 +35,26 @@ libnmcli = shared_library(
   name,
   sources,
   dependencies: deps,
-  c_args: clients_c_flags + ['-DG_LOG_DOMAIN="@0@"'.format(name), '-g'],
+  c_args: clients_c_flags + ['-DG_LOG_DOMAIN="@0@"'.format(name), '-g', '-DBUILDING_LIBRARY'],
   version: '1.0.0',
   soversion: '1',
   install: true,
   install_dir: join_paths(nm_libdir, 'libnmcli'),
 )
 
+# Build static library (without main function)
+libnmcli_static = static_library(
+  name + '_static',
+  sources,
+  dependencies: deps,
+  c_args: clients_c_flags + ['-DG_LOG_DOMAIN="@0@"'.format(name), '-g', '-DBUILDING_LIBRARY'],
+  install: true,
+  install_dir: join_paths(nm_libdir, 'libnmcli'),
+)
+
 # Create dependency object for the library
 libnmcli_dep = declare_dependency(
-  link_with: libnmcli,
+  link_with: [libnmcli, libnmcli_static],
   include_directories: include_directories('.'),
   dependencies: deps,
 )

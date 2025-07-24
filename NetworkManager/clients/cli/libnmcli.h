@@ -9,7 +9,6 @@
 #ifndef LIBNMCLI_H
 #define LIBNMCLI_H
 
-
 /* Define basic types if not using glib */
 #ifndef __GLIB_H__
 typedef int gboolean;

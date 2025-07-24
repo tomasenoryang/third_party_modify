@@ -8,56 +8,14 @@
 #include <stdbool.h>
 #include "nm-secret-agent-simple.h"
 #include "nm-meta-setting-desc.h"
+#include "libnmcli.h"
 
 
 struct _NMPolkitListener;
 
 typedef char *(*NmcCompEntryFunc) (const char *, int);
 
-/* nmcli exit codes */
-typedef enum {
-	/* Indicates successful execution */
-	NMC_RESULT_SUCCESS = 0,
-
-	/* Unknown / unspecified error */
-	NMC_RESULT_ERROR_UNKNOWN = 1,
-
-	/* Wrong invocation of nmcli */
-	NMC_RESULT_ERROR_USER_INPUT = 2,
-
-	/* A timeout expired */
-	NMC_RESULT_ERROR_TIMEOUT_EXPIRED = 3,
-
-	/* Error in connection activation */
-	NMC_RESULT_ERROR_CON_ACTIVATION = 4,
-
-	/* Error in connection deactivation */
-	NMC_RESULT_ERROR_CON_DEACTIVATION = 5,
-
-	/* Error in device disconnect */
-	NMC_RESULT_ERROR_DEV_DISCONNECT = 6,
-
-	/* Error in connection deletion */
-	NMC_RESULT_ERROR_CON_DEL = 7,
-
-	/* NetworkManager is not running */
-	NMC_RESULT_ERROR_NM_NOT_RUNNING = 8,
-
-	/* No more used, keep to preserve API */
-	NMC_RESULT_ERROR_VERSIONS_MISMATCH = 9,
-
-	/* Connection/Device/AP not found */
-	NMC_RESULT_ERROR_NOT_FOUND = 10,
-
-	/* Buffer size too small for output */
-	NMC_RESULT_ERROR_BUFFER_TOO_SMALL = 11,
-
-	/* Buffer size too small for error output */
-	NMC_RESULT_ERROR_BUFFER_TOO_SMALL_ERROR = 12,
-
-	/* --complete-args signals a file name may follow */
-	NMC_RESULT_COMPLETE_FILE = 65,
-} NMCResultCode;
+/* NMCResultCode is defined in libnmcli.h */
 
 typedef enum {
 	NMC_PRINT_TERSE = 0,
