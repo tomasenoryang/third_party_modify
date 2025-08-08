@@ -278,6 +278,10 @@ matches_arg (NmCli *nmc, int *argc, char ***argv, const char *pattern, char **ar
 		return FALSE;
 	}
 
+	if (!opt || !pattern) {
+		return FALSE;
+	}
+
 	if (opt[1] == '-') {
 		/* We know one '-' was already seen by the caller.
 		 * Skip it if there's a second one*/
@@ -1004,9 +1008,6 @@ nmcli_execute(int argc, char **argv)
 			g_main_loop_unref (loop);
 			loop = NULL;
 		}
-		
-		/* Set locale to use environment variables */
-		setlocale (LC_ALL, "");
 
 		#ifdef GETTEXT_PACKAGE
 			/* Set i18n stuff */
@@ -1070,6 +1071,10 @@ nmcli_execute_with_output(int argc, char **argv, char *output, size_t *size, cha
     int result;
     size_t actual_output_size = 0;
     long file_size = 0;
+    
+    /* 保存原始的 argv 指针，因为 process_command_line 会修改它 */
+    char **original_argv = argv;
+    int original_argc = argc;
 
     /* Reset global state before each call to ensure clean state */
     nmc_cleanup (&nm_cli);
@@ -1077,6 +1082,23 @@ nmcli_execute_with_output(int argc, char **argv, char *output, size_t *size, cha
         g_main_loop_unref (loop);
         loop = NULL;
     }
+
+    /* Reinitialize nm_cli structure */
+    nm_cli.return_text = g_string_new (_("Success"));
+    nm_cli.return_value = NMC_RESULT_SUCCESS;
+    nm_cli.timeout = -1;
+    nm_cli.should_wait = 0;
+    nm_cli.nowait_flag = TRUE;
+    nm_cli.nmc_config_mutable.print_output = NMC_PRINT_NORMAL;
+    nm_cli.nmc_config_mutable.multiline_output = FALSE;
+    nm_cli.mode_specified = FALSE;
+    nm_cli.nmc_config_mutable.escape_values = TRUE;
+    nm_cli.ask = FALSE;
+    nm_cli.complete = FALSE;
+    nm_cli.nmc_config_mutable.show_secrets = FALSE;
+    nm_cli.nmc_config_mutable.in_editor = FALSE;
+    nm_cli.editor_status_line = FALSE;
+    nm_cli.editor_save_confirmation = TRUE;
 
     snprintf(stdout_filename, sizeof(stdout_filename), "/tmp/nmcli_stdout_%ld_%d", 
              (long)time(NULL), getpid());
@@ -1100,7 +1122,8 @@ nmcli_execute_with_output(int argc, char **argv, char *output, size_t *size, cha
     dup2(stdout_fd, STDOUT_FILENO);
     dup2(stderr_fd, STDERR_FILENO);
 
-    result = nmcli_execute(argc, argv);
+    /* 使用原始的 argv 指针调用 nmcli_execute */
+    result = nmcli_execute(original_argc, original_argv);
 
     fflush(stdout);
     fflush(stderr);
@@ -1158,30 +1181,22 @@ nmcli_execute_with_output(int argc, char **argv, char *output, size_t *size, cha
 
     if (error && *error_size > 0) {
         if (stderr_buffer) {
-            size_t required_error_size = file_size + 1;
-            if (*error_size >= required_error_size) {
-                memcpy(error, stderr_buffer, file_size);
-                error[file_size] = '\0';
+            if (*error_size >= strlen(stderr_buffer) + 1) {
+                strcpy(error, stderr_buffer);
             } else {
-                /* Error buffer too small */
-                *error_size = required_error_size;
-                if (stderr_buffer)
-                    g_free(stderr_buffer);
-                return NMC_RESULT_ERROR_BUFFER_TOO_SMALL_ERROR;
+                strncpy(error, stderr_buffer, *error_size - 1);
+                error[*error_size - 1] = '\0';
             }
         } else {
             error[0] = '\0';
         }
-    } else if (stderr_buffer && file_size > 0) {
-        /* Error buffer not provided but stderr has content */
-        *error_size = file_size + 1;
-        if (stderr_buffer)
-            g_free(stderr_buffer);
-        return NMC_RESULT_ERROR_BUFFER_TOO_SMALL_ERROR;
     }
-    
-    if (stderr_buffer)
-        g_free(stderr_buffer);
+
+    if (error_size && stderr_buffer) {
+        *error_size = strlen(stderr_buffer) + 1;
+    }
+
+    g_free(stderr_buffer);
 
     return result;
 }

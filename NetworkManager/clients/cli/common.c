@@ -1322,8 +1322,8 @@ nmc_do_cmd (NmCli *nmc, const NMCCommand cmds[], const char *cmd, int argc, char
 	if (c->cmd) {
 		/* A valid command was specified. */
 		if (c->usage && argc == 2 && nmc->complete)
-			nmc_complete_help (*(argv+1));
-		if (!nmc->complete && c->usage && nmc_arg_is_help (*(argv+1))) {
+			nmc_complete_help (argv[0]);
+		if (!nmc->complete && c->usage && argc > 0 && nmc_arg_is_help (argv[0])) {
 			c->usage ();
 			g_task_return_boolean (task, TRUE);
 		} else {

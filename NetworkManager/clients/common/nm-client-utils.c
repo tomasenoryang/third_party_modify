@@ -219,6 +219,9 @@ finish:
 gboolean
 matches (const char *cmd, const char *pattern)
 {
+	if (!cmd || !pattern)
+		return FALSE;
+	
 	size_t len = strlen (cmd);
 	if (!len || len > strlen (pattern))
 		return FALSE;
