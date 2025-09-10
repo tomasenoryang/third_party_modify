@@ -45,7 +45,6 @@ test-*.trs
 /aclocal.m4
 /autom4te.cache
 /build-aux
-/config.*
 /config-extra.h
 /configure
 /intltool-*
